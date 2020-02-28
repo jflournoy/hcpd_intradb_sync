@@ -43,20 +43,26 @@ def read_subjects(subject_csv, scanners=[], do_shuffle=True):
         for row in reader:
             if 'Subject' in row:
                 subject_key = 'Subject'
+                split_base = False
             elif 'MR ID' in row:
                 subject_key = 'MR ID'
+                split_base = True
             else:
                 raise ValueError("Couldn't guess subject key.")
+
+            subject = row[subject_key]
+            if split_base:
+                subject = subject.split('_')[0]
 
             # Filter
             if len(scanners):
                 for scanner in scanners:
                     if row['Scanner'] == scanner:
-                        sublist.append(row[subject_key])
+                        sublist.append(subject)
             else:
-                if not row[subject_key].startswith('HC'):
-                    raise "Unexpected subject {}".format(row[subject_key])
-                sublist.append(row[subject_key])
+                if not subject.startswith('HC'):
+                    raise "Unexpected subject {}".format(subject)
+                sublist.append(subject)
     # Remove any possible duplicates
     sublist = list(set(sublist))
 
