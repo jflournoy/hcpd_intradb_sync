@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Download Resources for a project
 
-# import argparse
+import argparse
 from copy import copy
 from hashlib import md5
 import logging
@@ -20,11 +20,12 @@ logger = logging.getLogger(__name__)
 MAX_RETRIES = 3
 
 
-def main(project, collections, ignore_list=[], subjects=[]):
-    auth = yaxil.auth('intradb')
+def main(project, collections, ignore_list=[], subjects=[], sessions=[]):
+    auth = yaxil.auth('intradb')  # Requires setup and description
     start_time = time.time()
     with yaxil.session(auth) as sess:
-        experiments = fetch_experiments(sess, project, subjects)
+        if not sessions:
+            experiments = fetch_experiments(sess, project, subjects)
 
         for exp_info in [e._asdict() for e in experiments]:
             try:
@@ -267,33 +268,36 @@ def ignore_file(uri, ignores_list):
     return ignore
 
 
+def parse_args(args):
+    parser = argparse.ArgumentParser(description='Download from Remote XNAT')
+    parser.add_argument('--project', '-p', type=str)
+    parser.add_argument('--collections', '-c', type=str, nargs='+')
+    parser.add_argument('--ignore-list', type=list, default=['OTHER_FILES'])
+    parser.add_argument('--subjects', '-s', type=list, default=[], help='Explicit list of subjects')
+    parser.add_argument('--sessions', type=list, default=[], help='Explicit list of sessions')
+
+    return parser.parse_args(args)
+
 if __name__ == '__main__':
     # usage: ./download_resources.py CCF_HCD_STG
-    project = sys.argv[1]
+    args = parse_args(sys.argv[1:])
 
-    collections = [
-        #'Diffusion_unproc',
-        #'mbPCASLhr_unproc',
-        # 'rfMRI_REST1_AP_unproc',
-        # 'rfMRI_REST1_PA_unproc',
-        # 'rfMRI_REST2_AP_unproc',
-        # 'rfMRI_REST2_PA_unproc',
-        'Structural_preproc',
-        #       'T1w_MPR_vNav_4e_RMS_unproc',
-        #       'T2w_SPC_vNav_unproc',
-        #       'tfMRI_GUESSING_PA_unproc',
-        #       'tfMRI_GUESSING_AP_unproc',
-        #       'tfMRI_CARIT_AP_unproc',
-        #       'tfMRI_CARIT_PA_unproc',
-        #       'tfMRI_EMOTION_PA_unproc',
-    ]
+    # collections = [
+    #     #'Diffusion_unproc',
+    #     #'mbPCASLhr_unproc',
+    #     # 'rfMRI_REST1_AP_unproc',
+    #     # 'rfMRI_REST1_PA_unproc',
+    #     # 'rfMRI_REST2_AP_unproc',
+    #     # 'rfMRI_REST2_PA_unproc',
+    #     'Structural_preproc',
+    #     #       'T1w_MPR_vNav_4e_RMS_unproc',
+    #     #       'T2w_SPC_vNav_unproc',
+    #     #       'tfMRI_GUESSING_PA_unproc',
+    #     #       'tfMRI_GUESSING_AP_unproc',
+    #     #       'tfMRI_CARIT_AP_unproc',
+    #     #       'tfMRI_CARIT_PA_unproc',
+    #     #       'tfMRI_EMOTION_PA_unproc',
+    # ]
 
-    ignore_list = ['OTHER_FILES']
-    if len(sys.argv) > 2:
-        subjects = sys.argv[2:]
-    else:
-        subjects = []
-    main(project=project,
-         collections=collections,
-         ignore_list=ignore_list,
-         subjects=subjects)
+    opts = vars(args)
+    main(**opts)

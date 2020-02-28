@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # 2019-12-03 EKK
 # Split and submit a set of subjects to slurm to download from HCD
+import argparse
 import csv
 import os
 # from shlex import join
@@ -73,9 +74,19 @@ def split(a, n):
             for i in xrange(n))
 
 
+def parse_args(args):
+    parser = argparse.ArgumentParser(description='Manage Downloads')
+    parser.add_argument('--sheet', type=argparse.FileType('r'))
+    parser.add_argument('--n-procs', type=int, default=1)
+    parser.add_argument('--use-slurm', action='store_true')
+    parser.add_argument('--scanners', type=list, help='Limit to only the listed scanner serial numbers')
+
+    return parser.parse_args(args)
+
 if __name__ == '__main__':
     if not os.environ.get('CONDA_DEFAULT_ENV'):
         raise RuntimeError('Please activate conda: `conda activate hcpl`')
 
     # Usage: download_submitter.py xnat_export-kastman_12_3_2019_11_56_1.csv
+    args = parse_args(sys.argv)
     main(sys.argv[1], nprocs=1, slurm=False, scanners=[])  # 15)
