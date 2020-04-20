@@ -15,3 +15,7 @@ Call Chain:
 
 download_submitter.py -> download.sh (slurm job) -> download_resources.py (actual downloader)
 
+
+Dependencies:
+
+This software uses [yaxil](https://github.com/harvard-nrg/yaxil) as its xnat interface.
