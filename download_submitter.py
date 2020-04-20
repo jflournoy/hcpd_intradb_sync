@@ -14,8 +14,8 @@ import time
 HARVARD_SCANNER = 'AWP67056'
 
 
-def main(subject_csv, nprocs=4, slurm=True, scanners=[HARVARD_SCANNER]):
-    """Read an xnat csv, split the s ubject list, and submit dl to slurm."""
+def main(subject_csv, scriptloc, nprocs=4, slurm=True, scanners=[HARVARD_SCANNER]):
+    """Read an xnat csv, split the subject list, and submit dl to slurm."""
 
     sublist = read_subjects(subject_csv, scanners=scanners)
     print('Submitting {} subjects for download:'.format(len(sublist)))
@@ -90,9 +90,9 @@ def parse_args(args):
     return parser.parse_args(args)
 
 if __name__ == '__main__':
-    if not os.environ.get('CONDA_DEFAULT_ENV'):
-        raise RuntimeError('Please activate conda: `conda activate hcpl`')
-
+    #developed mainly using hcpl environment on the NRG : conda activate hcpl
     # Usage: download_submitter.py xnat_export-kastman_12_3_2019_11_56_1.csv
     args = parse_args(sys.argv)
-    main(sys.argv[1], nprocs=1, slurm=False, scanners=[])  # 15)
+    # modify script location here
+    scriptloc = os.getcwd() + '/download.sh'
+    main(sys.argv[1], scriptloc, nprocs=1, slurm=False, scanners=[])

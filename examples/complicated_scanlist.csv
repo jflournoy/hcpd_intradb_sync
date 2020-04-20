@@ -1,0 +1,4 @@
+  1 Subject,M/F,Hand,YOB,Date of Birth,Gender,Handedness,Race,Ethnicity,nda_guid,nda_gender,MR Sessions,MR Notes,MR Session,Operator,Scanner,Marker,Stabilization
+  2 HCD1111111,M,R,,,male,right,,,NDAR_IN111ABC,M,1,,HCD1111111_V1_MR,PK BP CHGS,AWP166038,,
+  3 HCD2222222,F,R,,,female,right,,,NDAR_IN222DEF,F,1,,HCD2222222_V1_MR,PK,AWP67056,,
+  4 HCD3333333,F,R,,,female,right,,,NDAR_IN333GHI,F,1,,HCD3333333_V1_MR,CK LL,AWP166038,
