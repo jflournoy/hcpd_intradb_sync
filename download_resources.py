@@ -14,13 +14,19 @@ import yaxil
 from yaxil.exceptions import RestApiError
 from requests.exceptions import ConnectionError
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 logger = logging.getLogger(__name__)
 MAX_RETRIES = 3
 
 
-def main(project, collections, ignore_list=[], subjects=[], sessions=[]):
+def main(project, collections, ignore_list=None, subjects=None, sessions=None):
+    if not ignore_list:
+        ignore_list = list()
+    if not subjects:
+        subjects = list()
+    if not sessions:
+        sessions = list()
     auth = yaxil.auth('intradb')  # Requires setup and description
     start_time = time.time()
     with yaxil.session(auth) as sess:
@@ -29,10 +35,9 @@ def main(project, collections, ignore_list=[], subjects=[], sessions=[]):
 
         for exp_info in [e._asdict() for e in experiments]:
             try:
-                fetch_experiment(sess, collections, exp_info)
+                fetch_experiment(sess, collections, exp_info, ignore_list)
             except Exception as err:
                 logger.error('Error with subject {}'.format(exp_info['label']))
-                logger.error(str(err))
                 continue
     elapsed_time = time.time() - start_time
     logger.info('Finished {} experiments in {}'.format(
@@ -57,8 +62,7 @@ def fetch_experiments(sess, project, subject_labels):
     logger.info('Found {} experiments'.format(len(experiments)))
     return experiments
 
-
-def fetch_experiment(sess, collections, exp_info):
+def fetch_experiment(sess, collections, exp_info, ignore_list):
     logger.info('Syncing experiment {}'.format(exp_info['label']))
     start_time = time.time()
 
@@ -80,7 +84,7 @@ def fetch_experiment(sess, collections, exp_info):
 
     for resource in resources:
         try:
-            fetch_resource(sess, exp_info, resource, always_checksum=True)
+            fetch_resource(sess, exp_info, resource, always_checksum=True, ignore_list=ignore_list)
         except ValueError as err:
             if 'No JSON object could be decoded' in str(err):
                 logger.error(err)
@@ -150,7 +154,9 @@ def fetch_resources(sess, exp_info, collections=None):
     return resources
 
 
-def fetch_resource(sess, exp_info, resource_info, ignore_list=[], always_checksum=False):
+def fetch_resource(sess, exp_info, resource_info, always_checksum=False, ignore_list=None):
+    if not ignore_list:
+        ignore_list = list()
     # Use a cookie to mark a resource as complete
     success_cookie = os.path.join(exp_info['label'], resource_info['label'],
                                   'SUCCESS')
@@ -273,7 +279,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Download from Remote XNAT')
     parser.add_argument('--project', '-p', type=str)
     parser.add_argument('--collections', '-c', type=str, nargs='+')
-    parser.add_argument('--ignore-list', type=list, default=['OTHER_FILES'])
+    parser.add_argument('--ignore-list', type=str, default=['OTHER_FILES'])
     parser.add_argument('--subjects', '-s', type=str, nargs='+', default=[], help='Explicit list of subjects')
     parser.add_argument('--sessions', type=list, default=[], help='Explicit list of sessions')
 

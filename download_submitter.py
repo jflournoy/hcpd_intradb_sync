@@ -4,15 +4,12 @@
 import argparse
 import csv
 import os
-# from shlex import join
+import subprocess as sp
 from random import shuffle
-from subprocess import check_output
 import sys
 import time
-# import pandas as pd
 
 HARVARD_SCANNER = 'AWP67056'
-
 
 def main(subject_csv, scriptloc, nprocs=4, slurm=True, scanners=[HARVARD_SCANNER]):
     """Read an xnat csv, split the subject list, and submit dl to slurm."""
@@ -26,17 +23,17 @@ def main(subject_csv, scriptloc, nprocs=4, slurm=True, scanners=[HARVARD_SCANNER
         else:
             cmd = []  # Run Locally
 
-        cmd += [
-            os.getcwd() + '/download.sh', '-s',
-            ' '.join(part),
-        ]
-        print(cmd)
-        print(' '.join(cmd))
-        print(check_output(cmd))
+        cmd.append(scriptloc)
+	cmd.append('-s')
+        cmd.extend(part)
+        print(sp.list2cmdline(cmd))
+        print(sp.check_output(cmd))
 
 
-def read_subjects(subject_csv, scanners=[], do_shuffle=True):
+def read_subjects(subject_csv, scanners=None, do_shuffle=True):
     """Read an xnat exported csv to create a subject list of Harvard Subs."""
+    if not scanners:
+        scanners = list()
     sublist = []
     with open(subject_csv, 'r') as f:
         reader = csv.DictReader(f)
@@ -85,6 +82,7 @@ def parse_args():
     parser.add_argument('--sheet', type=str)
     parser.add_argument('--n-procs', type=int, default=1)
     parser.add_argument('--use-slurm', action='store_true')
+    parser.add_argument('--download-script', default='download.sh')
     parser.add_argument('--scanners', type=list, help='Limit to only the listed scanner serial numbers', default=[])
 
     return parser.parse_args()
@@ -93,6 +91,5 @@ if __name__ == '__main__':
     #developed mainly using hcpl environment on the NRG : conda activate hcpl
     # Usage: download_submitter.py xnat_export-kastman_12_3_2019_11_56_1.csv
     args = parse_args()
-    # modify script location here
-    scriptloc = os.getcwd() + '/download.sh'
-    main(args.sheet, scriptloc, nprocs=args.n_procs, slurm=args.use_slurm, scanners=args.scanners)
+    main(args.sheet, args.download_script, nprocs=args.n_procs, slurm=args.use_slurm, scanners=args.scanners)
+
