@@ -27,7 +27,7 @@ def main(subject_csv, scriptloc, nprocs=4, slurm=True, scanners=[HARVARD_SCANNER
             cmd = []  # Run Locally
 
         cmd += [
-            os.getcwd() + '/download.sh',
+            os.getcwd() + '/download.sh', '-s',
             ' '.join(part),
         ]
         print(cmd)
@@ -77,22 +77,22 @@ def split(a, n):
     # https://stackoverflow.com/a/2135920
     k, m = divmod(len(a), n)
     return (a[i * k + min(i, m):(i + 1) * k + min(i + 1, m)]
-            for i in xrange(n))
+            for i in range(n))
 
 
-def parse_args(args):
+def parse_args():
     parser = argparse.ArgumentParser(description='Manage Downloads')
-    parser.add_argument('--sheet', type=argparse.FileType('r'))
+    parser.add_argument('--sheet', type=str)
     parser.add_argument('--n-procs', type=int, default=1)
     parser.add_argument('--use-slurm', action='store_true')
-    parser.add_argument('--scanners', type=list, help='Limit to only the listed scanner serial numbers')
+    parser.add_argument('--scanners', type=list, help='Limit to only the listed scanner serial numbers', default=[])
 
-    return parser.parse_args(args)
+    return parser.parse_args()
 
 if __name__ == '__main__':
     #developed mainly using hcpl environment on the NRG : conda activate hcpl
     # Usage: download_submitter.py xnat_export-kastman_12_3_2019_11_56_1.csv
-    args = parse_args(sys.argv)
+    args = parse_args()
     # modify script location here
     scriptloc = os.getcwd() + '/download.sh'
-    main(sys.argv[1], scriptloc, nprocs=1, slurm=False, scanners=[])
+    main(args.sheet, scriptloc, nprocs=args.n_procs, slurm=args.use_slurm, scanners=args.scanners)

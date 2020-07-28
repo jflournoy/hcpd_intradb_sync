@@ -32,6 +32,7 @@ def main(project, collections, ignore_list=[], subjects=[], sessions=[]):
                 fetch_experiment(sess, collections, exp_info)
             except Exception as err:
                 logger.error('Error with subject {}'.format(exp_info['label']))
+                logger.error(str(err))
                 continue
     elapsed_time = time.time() - start_time
     logger.info('Finished {} experiments in {}'.format(
@@ -50,7 +51,7 @@ def fetch_experiments(sess, project, subject_labels):
                 experiments.extend(sess.experiments(subject=sub))
         except Exception as err:
             print('Error with subject {}'.format(label))
-            print(err)
+            print(str(err))
     else:
         experiments = list(sess.experiments(project=project))
     logger.info('Found {} experiments'.format(len(experiments)))
@@ -81,7 +82,7 @@ def fetch_experiment(sess, collections, exp_info):
         try:
             fetch_resource(sess, exp_info, resource, always_checksum=True)
         except ValueError as err:
-            if 'No JSON object could be decoded' in err.message:
+            if 'No JSON object could be decoded' in str(err):
                 logger.error(err)
                 continue
             else:
@@ -149,7 +150,7 @@ def fetch_resources(sess, exp_info, collections=None):
     return resources
 
 
-def fetch_resource(sess, exp_info, resource_info, always_checksum=False):
+def fetch_resource(sess, exp_info, resource_info, ignore_list=[], always_checksum=False):
     # Use a cookie to mark a resource as complete
     success_cookie = os.path.join(exp_info['label'], resource_info['label'],
                                   'SUCCESS')
@@ -231,8 +232,8 @@ def download_file(sess,
             autobox=False)
     except RestApiError as err:
         # Empty responses are acceptable for some scripts and onset files
-        if 'response is empty' in err.message:
-            result = bytes('')
+        if 'response is empty' in str(err):
+            result = bytes('', 'utf8')
         else:
             raise
 
@@ -268,19 +269,19 @@ def ignore_file(uri, ignores_list):
     return ignore
 
 
-def parse_args(args):
+def parse_args():
     parser = argparse.ArgumentParser(description='Download from Remote XNAT')
     parser.add_argument('--project', '-p', type=str)
     parser.add_argument('--collections', '-c', type=str, nargs='+')
     parser.add_argument('--ignore-list', type=list, default=['OTHER_FILES'])
-    parser.add_argument('--subjects', '-s', type=list, default=[], help='Explicit list of subjects')
+    parser.add_argument('--subjects', '-s', type=str, nargs='+', default=[], help='Explicit list of subjects')
     parser.add_argument('--sessions', type=list, default=[], help='Explicit list of sessions')
 
-    return parser.parse_args(args)
+    return parser.parse_args()
 
 if __name__ == '__main__':
     # usage: ./download_resources.py CCF_HCD_STG
-    args = parse_args(sys.argv[1:])
+    args = parse_args()
 
     # collections = [
     #     #'Diffusion_unproc',
