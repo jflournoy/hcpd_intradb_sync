@@ -50,13 +50,13 @@ def fetch_experiments(sess, project, subject_labels):
     logger.info('Fetching list of experiments')
     if len(subject_labels):
         experiments = []
-        try:
-            for label in subject_labels:
+        for label in subject_labels:
+            try:
                 sub = list(sess.subjects(label=label, project=project))[0]
                 experiments.extend(sess.experiments(subject=sub))
-        except Exception as err:
-            print('Error with subject {}'.format(label))
-            print(str(err))
+            except Exception as err:
+                print('Error with subject {}'.format(label))
+                print(str(err))
     else:
         experiments = list(sess.experiments(project=project))
     logger.info('Found {} experiments'.format(len(experiments)))
@@ -279,7 +279,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Download from Remote XNAT')
     parser.add_argument('--project', '-p', type=str)
     parser.add_argument('--collections', '-c', type=str, nargs='+')
-    parser.add_argument('--ignore-list', type=str, default=['OTHER_FILES'])
+    parser.add_argument('--ignore-list', type=str, nargs='+', default=['OTHER_FILES'])
     parser.add_argument('--subjects', '-s', type=str, nargs='+', default=[], help='Explicit list of subjects')
     parser.add_argument('--sessions', type=list, default=[], help='Explicit list of sessions')
 

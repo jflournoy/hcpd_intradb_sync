@@ -24,7 +24,7 @@ def main(subject_csv, scriptloc, nprocs=4, slurm=True, scanners=[HARVARD_SCANNER
             cmd = []  # Run Locally
 
         cmd.append(scriptloc)
-	cmd.append('-s')
+        cmd.append('-s')
         cmd.extend(part)
         print(sp.list2cmdline(cmd))
         print(sp.check_output(cmd))
