@@ -20,13 +20,28 @@ logger = logging.getLogger(__name__)
 MAX_RETRIES = 3
 
 
-def main(project, collections, ignore_list=None, subjects=None, sessions=None):
+def main(project, collections, ignore_list=None, subjects=None, sessions=None, no_checksum=False, psychopy=False, scantype=None, subcollection=None, like_itk=None):
     if not ignore_list:
         ignore_list = list()
     if not subjects:
         subjects = list()
     if not sessions:
         sessions = list()
+    if not scantype:
+        scantype = list()
+    if not subcollection:
+        subcollection = list()        
+    if no_checksum:
+        always_checksum=False
+    else:
+        always_checksum=True
+    logger.info('Project is {}.'.format(project))
+    if psychopy:
+        if project != 'CCF_HCD_ITK':
+            print(project)
+            logger.error('Project does not match "psychopy" argument')
+        else:
+            logger.info('Downloading psychopy files from intake project')
     auth = yaxil.auth('intradb')  # Requires setup and description
     start_time = time.time()
     with yaxil.session(auth) as sess:
@@ -35,9 +50,9 @@ def main(project, collections, ignore_list=None, subjects=None, sessions=None):
 
         for exp_info in [e._asdict() for e in experiments]:
             try:
-                fetch_experiment(sess, collections, exp_info, ignore_list)
+                fetch_experiment(sess, collections, exp_info, ignore_list, always_checksum, psychopy=psychopy, scantype=scantype, subcollection=subcollection, project=project, like_itk=like_itk)
             except Exception as err:
-                logger.error('Error with subject {}'.format(exp_info['label']))
+                logger.error('(Main) Error with subject {}'.format(exp_info['label']))
                 continue
     elapsed_time = time.time() - start_time
     logger.info('Finished {} experiments in {}'.format(
@@ -55,14 +70,14 @@ def fetch_experiments(sess, project, subject_labels):
                 sub = list(sess.subjects(label=label, project=project))[0]
                 experiments.extend(sess.experiments(subject=sub))
             except Exception as err:
-                print('Error with subject {}'.format(label))
+                print('(fetch_experiments) Error with subject {}'.format(label))
                 print(str(err))
     else:
         experiments = list(sess.experiments(project=project))
     logger.info('Found {} experiments'.format(len(experiments)))
     return experiments
 
-def fetch_experiment(sess, collections, exp_info, ignore_list):
+def fetch_experiment(sess, collections, exp_info, ignore_list, always_checksum, psychopy=False, scantype=None, subcollection=None, project=None, like_itk=None):
     logger.info('Syncing experiment {}'.format(exp_info['label']))
     start_time = time.time()
 
@@ -75,7 +90,7 @@ def fetch_experiment(sess, collections, exp_info, ignore_list):
     #     label='HCD0021614_V1_MR')  # experiment_label
 
     try:
-        resources = fetch_resources(sess, exp_info, collections)
+        resources = fetch_resources(sess, exp_info, collections, psychopy=psychopy, scantype=scantype, subcollection=subcollection, project=project, like_itk=like_itk)
     except ValueError:
         logger.error('Unrecoverable error in {}'.format(exp_info['label']))
         resources = []
@@ -83,8 +98,9 @@ def fetch_experiment(sess, collections, exp_info, ignore_list):
     resource_errors = []
 
     for resource in resources:
+        logger.debug('Fetching all the resources...')
         try:
-            fetch_resource(sess, exp_info, resource, always_checksum=True, ignore_list=ignore_list)
+            fetch_resource(sess, exp_info, resource, always_checksum=always_checksum, ignore_list=ignore_list, psychopy=psychopy, scantype=scantype, subcollection=subcollection, project=project, like_itk=like_itk)
         except ValueError as err:
             if 'No JSON object could be decoded' in str(err):
                 logger.error(err)
@@ -127,53 +143,92 @@ def fetch_experiment(sess, collections, exp_info, ignore_list):
     #     ]
 
 
-def fetch_resources(sess, exp_info, collections=None):
+def fetch_resources(sess, exp_info, collections=None, psychopy=False, scantype=None, subcollection=None, project=None, like_itk=None):
     """Fetch a list of json resources with collection label and id."""
-
-    resources_url_pat = ('data/projects/{project}/subjects/{subject_label}/'
-                         'experiments/{label}/resources')
+    if project == 'CCF_HCD_ITK' or like_itk:
+        resources_url_pat = ('data/projects/{project}/subjects/{subject_label}/'
+                         'experiments/{label}/scans')
+    else:
+        resources_url_pat = ('data/projects/{project}/subjects/{subject_label}/'
+                             'experiments/{label}/resources')
     base_url = resources_url_pat.format(**exp_info)
+    
     _, response = yaxil._get(sess._auth, base_url, yaxil.Format.JSON)
 
     # Filter only wanted collections or return all
     if collections:
-        resources = [
-            result for result in response['ResultSet']['Result']
-            if result['label'] in collections
-        ]
+        if project == 'CCF_HCD_ITK' or like_itk:
+            if scantype:
+                resources = [
+                    result for result in response['ResultSet']['Result']
+                    if result['series_description'] in collections and result['type'] in scantype
+                ]
+            else:
+                resources = [
+                    result for result in response['ResultSet']['Result']
+                    if result['series_description'] in collections
+                ]
+        else:
+            resources = [
+                result for result in response['ResultSet']['Result']
+                if result['label'] in collections
+            ]
     else:
         resources = response['ResultSet']['Result']
 
     if not len(resources):
         msg = 'Found no resources '
         if collections:
-            msg += 'matching collections {}'.format(collections)
-        msg += 'for {}'.format(resources_url_pat)
+            msg += 'matching collections {} '.format(collections)
+        msg += 'for {}'.format(base_url)
         logger.warning(msg)
+    else:
+        logger.info('Found {} resources matching {}.'.format(str(len(resources)), collections))
 
     return resources
 
 
-def fetch_resource(sess, exp_info, resource_info, always_checksum=False, ignore_list=None):
+def fetch_resource(sess, exp_info, resource_info, always_checksum=False, ignore_list=None, psychopy=False, scantype=None, subcollection=None, project=None, like_itk=None):
+    
     if not ignore_list:
         ignore_list = list()
     # Use a cookie to mark a resource as complete
-    success_cookie = os.path.join(exp_info['label'], resource_info['label'],
+    if project == 'CCF_HCD_ITK' or like_itk:
+        resource_info_dir_index = 'series_description'
+    else:
+        resource_info_dir_index = 'label'
+    success_cookie = os.path.join(exp_info['label'], resource_info[resource_info_dir_index],
                                   'SUCCESS')
+    logger.debug('Fetching resource {}'.format(resource_info[resource_info_dir_index]))
     if os.path.exists(success_cookie) and not always_checksum:
         return
-
-    resource_url_pat = (
-        'data/projects/{project}/subjects/{subject_label}/'
-        'experiments/{label}/resources/{xnat_abstractresource_id}/files')
-    url_info = copy(exp_info)  # Combine resource and experiment
-    url_info['xnat_abstractresource_id'] = resource_info[
-        'xnat_abstractresource_id']
-
-    base_url = resource_url_pat.format(**url_info)
+    
+    if psychopy:
+        logger.debug('Using intake database URI to fetch resource')
+        resource_url_pat = (resource_info['URI'] + '/resources/LINKED_DATA/files')
+        base_url = resource_url_pat
+    elif project == 'CCF_HCD_ITK' or like_itk:
+        logger.debug('Using intake database URI to fetch resource')
+        resource_url_pat = (resource_info['URI'] + '/files')
+        base_url = resource_url_pat
+    else:
+        resource_url_pat = (
+            'data/projects/{project}/subjects/{subject_label}/'
+            'experiments/{label}/resources/{xnat_abstractresource_id}/files')
+        url_info = copy(exp_info)  # Combine resource and experiment
+        url_info['xnat_abstractresource_id'] = resource_info[
+            'xnat_abstractresource_id']
+        base_url = resource_url_pat.format(**url_info)
+        
     _, response = yaxil._get(sess._auth, base_url, yaxil.Format.JSON)
 
-    filelist = response['ResultSet']['Result']
+    if subcollection:
+        filelist = [
+            file for file in response['ResultSet']['Result'] 
+            if file['collection'] in subcollection
+        ]
+    else:
+        filelist = response['ResultSet']['Result']
     if not len(filelist):
         raise ValueError('No files could be read from {} in json response: {}'.format(base_url, response))
     logger.info('Syncing {} file (resources) from {}'.format(len(filelist), base_url))
@@ -186,7 +241,11 @@ def fetch_resource(sess, exp_info, resource_info, always_checksum=False, ignore_
             if ignore_file(fileinfo['uri'], ignore_list):
                 logger.debug('Ignoring {}'.format(fileinfo['uri']))
                 continue
-            download_file(sess, out_dir=exp_info['label'], **fileinfo)
+            if project == 'CCF_HCD_ITK' or like_itk:
+                out_dir = os.path.join(exp_info['label'], resource_info[resource_info_dir_index])
+            else:
+                out_dir = exp_info['label']
+            download_file(sess, out_dir=out_dir, **fileinfo)
         except RuntimeError:
             logger.info('Digest failed on {}'.format(fileinfo['uri']))
         except RestApiError as err:
@@ -244,6 +303,7 @@ def download_file(sess,
             raise
 
     with open(fname, 'wb') as f:
+        logger.info('Writing {}'.format(fname))
         f.write(result)
 
     with open(fname, 'rb') as f:
@@ -282,6 +342,11 @@ def parse_args():
     parser.add_argument('--ignore-list', type=str, nargs='+', default=['OTHER_FILES'])
     parser.add_argument('--subjects', '-s', type=str, nargs='+', default=[], help='Explicit list of subjects')
     parser.add_argument('--sessions', type=list, default=[], help='Explicit list of sessions')
+    parser.add_argument('--no-checksum', action='store_true')
+    parser.add_argument('--scantype', '-t', type=str, nargs='+', help='Specify scan type; useful for intake project.')
+    parser.add_argument('--subcollection', '-C', type=str, nargs='+', help='Specify sub-collection; useful for intake project.')
+    parser.add_argument('--psychopy', action='store_true', help='Download behavior data from intake project for specified collections')
+    parser.add_argument('--like-itk', action='store_true', help='Download using intake-style urls (useful for getting special scan data even from staging project)')
 
     return parser.parse_args()
 
