@@ -22,5 +22,5 @@ cd /net/holynfs01/srv/export/ncf_hcp/share_root/data/intradb_multiprocfix
 
 # Add a staggered sleep
 sleep $[ ( $RANDOM % 300 ) + 1 ]s
-python "${scriptdir}"/download_resources.py -p CCF_HCD_STG -c MultiRunIcaFix_proc --ignore-list rfMRI_REST1_AP rfMRI_REST2_AP tfMRI_EMOTION_AP tfMRI_EMOTION_PA rfMRI_REST2_PA rfMRI_REST1_PA fMRI_CONCAT_ALL $@
+python "${scriptdir}"/download_resources.py -p CCF_HCD_STG -c MultiRunIcaFix_proc --ignore-list tfMRI_EMOTION_AP tfMRI_EMOTION_PA fMRI_CONCAT_ALL $@
 

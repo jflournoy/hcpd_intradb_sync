@@ -22,5 +22,5 @@ cd /net/holynfs01/srv/export/ncf_hcp/share_root/data/intradb
 
 # Add a staggered sleep
 sleep $[ ( $RANDOM % 300 ) + 1 ]s
-python "${scriptdir}"/download_resources.py -p CCF_HCD_STG -c Structural_preproc $@
+python "${scriptdir}"/download_resources.py --no-checksum -p CCF_HCD_STG -c T1w_MPR_vNav_4e_RMS_unproc T2w_SPC_vNav_unproc $@
 
