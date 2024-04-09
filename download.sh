@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-#SBATCH -p ncf # partition (queue)
+#SBATCH -p fasse# partition (queue)
 #SBATCH --mem 8000 # memory
 #SBATCH --account somerville_lab
 #SBATCH -t 3-2:00 # time (D-HH:MM)
@@ -18,7 +18,7 @@ fi
 
 scriptdir=`pwd -P`
 #cd /ncf/hcp/data/intradb
-cd /net/holynfs01/srv/export/ncf_hcp/share_root/data/intradb_multiprocfix
+cd /ncf/hcp/data/intradb_multiprocfix
 
 # Add a staggered sleep
 sleep $[ ( $RANDOM % 300 ) + 1 ]s

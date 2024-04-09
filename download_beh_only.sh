@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-#SBATCH -p fasse # partition (queue)
+#SBATCH -p fasse# partition (queue)
 #SBATCH --mem 8000 # memory
 #SBATCH --account somerville_lab
 #SBATCH -t 3-2:00 # time (D-HH:MM)
@@ -22,5 +22,5 @@ cd /ncf/hcp/data/intradb_multiprocfix
 
 # Add a staggered sleep
 sleep $[ ( $RANDOM % 300 ) + 1 ]s
-python "${scriptdir}"/download_resources.py -p CCF_HCD_STG -c MultiRunIcaFix_proc --ignore-list tfMRI_EMOTION_AP tfMRI_EMOTION_PA fMRI_CONCAT_ALL $@
+python "${scriptdir}"/download_resources.py -p CCF_HCD_STG -c tfMRI_CARIT_PA tfMRI_CARIT_AP tfMRI_GUESSING_AP tfMRI_GUESSING_PA --psychopy --like-itk $@
 

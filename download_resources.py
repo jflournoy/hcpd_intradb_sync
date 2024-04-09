@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 MAX_RETRIES = 3
 
 
-def main(project, collections, ignore_list=None, subjects=None, sessions=None, no_checksum=False, psychopy=False, scantype=None, subcollection=None, like_itk=None):
+def main(project, collections, ignore_list=None, subjects=None, sessions=None, no_checksum=False, psychopy=False, scantype=None, subcollection=None, like_itk=None, file_regex=None):
     if not ignore_list:
         ignore_list = list()
     if not subjects:
@@ -30,7 +30,7 @@ def main(project, collections, ignore_list=None, subjects=None, sessions=None, n
     if not scantype:
         scantype = list()
     if not subcollection:
-        subcollection = list()        
+        subcollection = list()
     if no_checksum:
         always_checksum=False
     else:
@@ -50,9 +50,9 @@ def main(project, collections, ignore_list=None, subjects=None, sessions=None, n
 
         for exp_info in [e._asdict() for e in experiments]:
             try:
-                fetch_experiment(sess, collections, exp_info, ignore_list, always_checksum, psychopy=psychopy, scantype=scantype, subcollection=subcollection, project=project, like_itk=like_itk)
+                fetch_experiment(sess, collections, exp_info, ignore_list, always_checksum, psychopy=psychopy, scantype=scantype, subcollection=subcollection, project=project, like_itk=like_itk, file_regex=file_regex)
             except Exception as err:
-                logger.error('(Main) Error with subject {}'.format(exp_info['label']))
+                logger.error('(Main) Error with subject {}: {}'.format(exp_info['label'], err))
                 continue
     elapsed_time = time.time() - start_time
     logger.info('Finished {} experiments in {}'.format(
@@ -77,7 +77,7 @@ def fetch_experiments(sess, project, subject_labels):
     logger.info('Found {} experiments'.format(len(experiments)))
     return experiments
 
-def fetch_experiment(sess, collections, exp_info, ignore_list, always_checksum, psychopy=False, scantype=None, subcollection=None, project=None, like_itk=None):
+def fetch_experiment(sess, collections, exp_info, ignore_list, always_checksum, psychopy=False, scantype=None, subcollection=None, project=None, like_itk=None, file_regex=None):
     logger.info('Syncing experiment {}'.format(exp_info['label']))
     start_time = time.time()
 
@@ -100,7 +100,7 @@ def fetch_experiment(sess, collections, exp_info, ignore_list, always_checksum, 
     for resource in resources:
         logger.debug('Fetching all the resources...')
         try:
-            fetch_resource(sess, exp_info, resource, always_checksum=always_checksum, ignore_list=ignore_list, psychopy=psychopy, scantype=scantype, subcollection=subcollection, project=project, like_itk=like_itk)
+            fetch_resource(sess, exp_info, resource, always_checksum=always_checksum, ignore_list=ignore_list, psychopy=psychopy, scantype=scantype, subcollection=subcollection, project=project, like_itk=like_itk, file_regex=file_regex)
         except ValueError as err:
             if 'No JSON object could be decoded' in str(err):
                 logger.error(err)
@@ -188,7 +188,7 @@ def fetch_resources(sess, exp_info, collections=None, psychopy=False, scantype=N
     return resources
 
 
-def fetch_resource(sess, exp_info, resource_info, always_checksum=False, ignore_list=None, psychopy=False, scantype=None, subcollection=None, project=None, like_itk=None):
+def fetch_resource(sess, exp_info, resource_info, always_checksum=False, ignore_list=None, psychopy=False, scantype=None, subcollection=None, project=None, like_itk=None, file_regex=None):
     
     if not ignore_list:
         ignore_list = list()
@@ -222,13 +222,16 @@ def fetch_resource(sess, exp_info, resource_info, always_checksum=False, ignore_
         
     _, response = yaxil._get(sess._auth, base_url, yaxil.Format.JSON)
 
+    filelist = response['ResultSet']['Result']
     if subcollection:
         filelist = [
-            file for file in response['ResultSet']['Result'] 
-            if file['collection'] in subcollection
+            file for file in filelist if file['collection'] in subcollection
         ]
-    else:
-        filelist = response['ResultSet']['Result']
+    if file_regex:
+        filelist = [
+            file for file in filelist if re.search(file_regex, file['Name'])
+        ]
+        
     if not len(filelist):
         raise ValueError('No files could be read from {} in json response: {}'.format(base_url, response))
     logger.info('Syncing {} file (resources) from {}'.format(len(filelist), base_url))
@@ -347,6 +350,7 @@ def parse_args():
     parser.add_argument('--subcollection', '-C', type=str, nargs='+', help='Specify sub-collection; useful for intake project.')
     parser.add_argument('--psychopy', action='store_true', help='Download behavior data from intake project for specified collections')
     parser.add_argument('--like-itk', action='store_true', help='Download using intake-style urls (useful for getting special scan data even from staging project)')
+    parser.add_argument('--file-regex', '-r', type=str, help='Grab files by regex. This regex is not checked!')
 
     return parser.parse_args()
 
