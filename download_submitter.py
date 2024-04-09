@@ -89,7 +89,7 @@ def parse_args():
 
 if __name__ == '__main__':
     #developed mainly using hcpl environment on the NRG : conda activate hcpl
-    # Usage: download_submitter.py xnat_export-kastman_12_3_2019_11_56_1.csv
+    # Usage: python3 download_submitter.py --sheet HCP_Staged_20230314.csv --n-procs 1 --use-slurm --download-script download.sh
     args = parse_args()
     main(args.sheet, args.download_script, nprocs=args.n_procs, slurm=args.use_slurm, scanners=args.scanners)
 

@@ -10,7 +10,7 @@ import re
 import sys
 import time
 
-import yaxil
+import yaxil #https://yaxil.readthedocs.io/en/latest/
 from yaxil.exceptions import RestApiError
 from requests.exceptions import ConnectionError
 
